@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TS × Planta Rosa — Дашборд продаж</title>
+<style>
+  :root{
+    --brand-950:#3a0f1c;
+    --brand-900:#4a1220;
+    --brand-800:#5c1727;
+    --brand-700:#7a1f34;
+    --brand-600:#93283f;
+    --brand-400:#c05f78;
+    --brand-200:#e3aebb;
+    --brand-100:#f1d3db;
+    --brand-050:#f8e7ec;
+    --cream:#faf6f0;
+    --panel:#ffffff;
+    --ink:#241417;
+    --ink-soft:#6b565c;
+    --ink-mute:#9c8890;
+    --line:#ece0e2;
+    --line-soft:#f2e9ea;
+    --good:#0ca35f;
+    --warn:#c98500;
+    --shadow:0 1px 2px rgba(58,15,28,.06), 0 8px 24px rgba(58,15,28,.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+
+  /* ---------- header ---------- */
+  .topbar{
+    background:linear-gradient(135deg,var(--brand-900) 0%,var(--brand-700) 60%,var(--brand-800) 100%);
+    color:#fff;
+    padding:22px clamp(16px,4vw,40px) 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  .topbar::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:radial-gradient(circle at 85% 20%, rgba(255,255,255,.08), transparent 45%),
+                      radial-gradient(circle at 10% 90%, rgba(255,255,255,.06), transparent 40%);
+    pointer-events:none;
+  }
+  .topbar-row{
+    position:relative;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:42px;height:42px;border-radius:12px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.28);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700; font-size:15px; letter-spacing:.02em;
+  }
+  .brand-text .name{font-size:19px;font-weight:700;letter-spacing:.01em;}
+  .brand-text .sub{font-size:12px;color:rgba(255,255,255,.72);margin-top:1px;}
+  .updated{
+    font-size:12px; color:rgba(255,255,255,.78);
+    display:flex; align-items:center; gap:8px;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:#4ce08a;box-shadow:0 0 0 3px rgba(76,224,138,.25);}
+  .dot.err{background:#ff8a80;box-shadow:0 0 0 3px rgba(255,138,128,.25);}
+  .dot.loading{background:#f0c85a;box-shadow:0 0 0 3px rgba(240,200,90,.25);}
+
+  /* ---------- layout ---------- */
+  .wrap{max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 60px;}
+  .kpi-row{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
+    margin-top:-34px; position:relative; z-index:2;
+  }
+  body.has-banner .kpi-row{ margin-top:18px; }
+  @media (max-width:860px){ .kpi-row{grid-template-columns:repeat(2,1fr);} }
+  .kpi{
+    background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:18px 18px 16px; border:1px solid var(--line-soft);
+  }
+  .kpi .label{font-size:12px; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  .kpi .value{font-size:28px; font-weight:700; margin-top:6px; letter-spacing:-.01em;}
+  .kpi .value small{font-size:14px;font-weight:600;color:var(--ink-mute);}
+  .kpi .sub{font-size:12.5px; color:var(--ink-mute); margin-top:4px;}
+  .kpi.accent .value{color:var(--brand-700);}
+
+  section.block{margin-top:28px;}
+  .block-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .block-title{font-size:16px;font-weight:700;}
+  .block-note{font-size:12.5px;color:var(--ink-mute);}
+
+  .panel{
+    background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow);
+    border:1px solid var(--line-soft); padding:18px;
+  }
+
+  /* ---------- size breakdown ---------- */
+  .size-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:14px;}
+  @media (max-width:760px){ .size-grid{grid-template-columns:repeat(2,1fr);} }
+  .size-cell{padding:6px 2px;}
+  .size-cell .sz-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .size-cell .sz-name{font-weight:700;font-size:14px;}
+  .size-cell .sz-pct{font-size:12px;color:var(--ink-mute);font-variant-numeric:tabular-nums;}
+  .track{height:10px;border-radius:6px;background:var(--brand-050);overflow:hidden;position:relative;}
+  .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--brand-600),var(--brand-700));}
+  .sz-nums{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-mute);margin-top:5px;font-variant-numeric:tabular-nums;}
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex; gap:6px; margin-top:32px; border-bottom:1px solid var(--line); padding-bottom:0;}
+  .tab-btn{
+    appearance:none; border:none; background:transparent; cursor:pointer;
+    padding:10px 18px; font-size:14px; font-weight:600; color:var(--ink-mute);
+    border-radius:10px 10px 0 0; position:relative; top:1px;
+  }
+  .tab-btn.active{color:var(--brand-700); background:var(--panel); border:1px solid var(--line); border-bottom-color:var(--panel); box-shadow:0 -2px 8px rgba(58,15,28,.04);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;}
+  .search-box{
+    display:flex; align-items:center; gap:8px;
+    background:var(--cream); border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; min-width:240px; flex:1 1 260px;
+  }
+  .search-box svg{flex:none; opacity:.55;}
+  .search-box input{border:none;background:transparent;outline:none;font-size:13.5px;color:var(--ink);width:100%;}
+  select.msel{
+    border:1px solid var(--line); border-radius:10px; background:var(--cream);
+    padding:8px 12px; font-size:13.5px; color:var(--ink); font-family:inherit; cursor:pointer;
+  }
+  .count-pill{font-size:12px;color:var(--ink-mute); white-space:nowrap;}
+
+  /* ---------- table ---------- */
+  .table-scroll{overflow-x:auto; border-radius:10px; border:1px solid var(--line-soft);}
+  table{width:100%; border-collapse:collapse; font-size:13px; min-width:640px;}
+  thead th{
+    background:var(--brand-050); color:var(--brand-800);
+    text-align:left; font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;
+    padding:10px 12px; white-space:nowrap; cursor:pointer; user-select:none;
+    position:sticky; top:0;
+  }
+  thead th .arrow{opacity:.4; font-size:10px; margin-left:3px;}
+  thead th.active .arrow{opacity:1;}
+  tbody td{padding:8px 12px; border-top:1px solid var(--line-soft); white-space:nowrap; font-variant-numeric:tabular-nums;}
+  tbody tr:hover{background:var(--brand-050);}
+  td.num, th.num{text-align:right;}
+  td.name-cell{white-space:normal; min-width:220px; font-variant-numeric:normal;}
+  .art-code{font-weight:600; font-size:12.5px;}
+  .art-sub{font-size:11.5px; color:var(--ink-mute); margin-top:1px;}
+  .thumb{
+    width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--brand-050);
+    border:1px solid var(--line-soft); display:block;
+  }
+  .thumb-fallback{
+    width:38px;height:38px;border-radius:8px;background:var(--brand-100);color:var(--brand-700);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1px solid var(--line-soft);
+  }
+  .row-flex{display:flex;align-items:center;gap:10px;}
+  .pct-chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;}
+  .pct-good{background:#e6f7ee;color:var(--good);}
+  .pct-mid{background:#fdf1de;color:var(--warn);}
+  .pct-low{background:var(--brand-050);color:var(--brand-700);}
+
+  /* ---------- rank bars ---------- */
+  .rank-list{display:flex; flex-direction:column; gap:9px;}
+  .rank-row{display:grid; grid-template-columns:26px 1fr auto; gap:10px; align-items:center;}
+  .rank-idx{font-size:11.5px;color:var(--ink-mute);font-weight:700;text-align:right;}
+  .rank-bar-wrap{background:var(--brand-050); border-radius:6px; overflow:hidden; height:22px; position:relative;}
+  .rank-bar-fill{height:100%; background:linear-gradient(90deg,var(--brand-600),var(--brand-800)); border-radius:6px;}
+  .rank-label{position:absolute; left:8px; top:0; bottom:0; display:flex; align-items:center; font-size:12px; font-weight:600; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.15);}
+  .rank-label.outside{color:var(--ink); text-shadow:none;}
+  .rank-val{font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--ink-soft); white-space:nowrap;}
+
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:860px){ .two-col{grid-template-columns:1fr;} }
+
+  .month-table td, .month-table th{white-space:nowrap;}
+
+  /* ---------- top10 cards ---------- */
+  .top-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:860px){ .top-grid{grid-template-columns:1fr;} }
+  .top-item{display:flex; align-items:center; gap:10px; padding:8px 4px; border-top:1px solid var(--line-soft);}
+  .top-item:first-child{border-top:none;}
+  .top-rank{width:22px; text-align:center; font-weight:800; color:var(--brand-700); font-size:13px;}
+
+  /* ---------- states ---------- */
+  .banner{
+    margin:16px clamp(16px,4vw,40px) 0; padding:12px 16px; border-radius:10px;
+    font-size:13.5px; display:flex; gap:10px; align-items:flex-start;
+  }
+  .banner.error{background:#fdeceb; color:#9c2b2b; border:1px solid #f4c9c5;}
+  .banner.info{background:var(--brand-050); color:var(--brand-800); border:1px solid var(--brand-100);}
+  .skeleton{background:linear-gradient(90deg,var(--line-soft) 25%,#fff 37%,var(--line-soft) 63%); background-size:400% 100%; animation:sk 1.4s ease infinite; border-radius:8px;}
+  @keyframes sk{0%{background-position:100% 0;}100%{background-position:0 0;}}
+
+  footer{text-align:center; padding:26px 16px 40px; font-size:11.5px; color:var(--ink-mute);}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-row">
+    <div class="brand">
+      <div class="brand-mark">TS</div>
+      <div class="brand-text">
+        <div class="name">TS × Planta Rosa</div>
+        <div class="sub">Дашборд продаж — живые данные из Google Sheets</div>
+      </div>
+    </div>
+    <div class="updated" id="statusLine"><span class="dot loading" id="statusDot"></span><span id="statusText">Загрузка данных…</span></div>
+  </div>
+</header>
+
+<div id="bannerHost"></div>
+
+<div class="wrap">
+
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi"><div class="label">Отправлено</div><div class="value skeleton" style="height:32px;width:70%">&nbsp;</div></div>
+    <div class="kpi"><div class="label">Продано</div><div class="value skeleton" style="height:32px;width:70%">&nbsp;</div></div>
+    <div class="kpi"><div class="label">Остаток</div><div class="value skeleton" style="height:32px;width:70%">&nbsp;</div></div>
+    <div class="kpi accent"><div class="label">Sell-out</div><div class="value skeleton" style="height:32px;width:50%">&nbsp;</div></div>
+  </div>
+
+  <section class="block">
+    <div class="block-head">
+      <div class="block-title">Разбивка по размерам</div>
+      <div class="block-note">Продано / Отправлено, по всем артикулам</div>
+    </div>
+    <div class="panel">
+      <div class="size-grid" id="sizeGrid"></div>
+    </div>
+  </section>
+
+  <div class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="svodnaya">Сводная</button>
+    <button class="tab-btn" data-tab="rollup">Roll-up</button>
+    <button class="tab-btn" data-tab="top10">Top10</button>
+  </div>
+
+  <!-- ---------------- СВОДНАЯ ---------------- -->
+  <div class="tab-panel active" id="panel-svodnaya">
+    <section class="block" style="margin-top:18px;">
+      <div class="toolbar">
+        <div class="search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="searchInput" type="text" placeholder="Поиск по артикулу, категории, коллекции…">
+        </div>
+        <span class="count-pill" id="svodCount"></span>
+      </div>
+      <div class="panel" style="padding:0;">
+        <div class="table-scroll">
+          <table id="svodTable">
+            <thead>
+              <tr>
+                <th data-key="photo" data-type="none">Фото</th>
+                <th data-key="article" data-type="str">Артикул <span class="arrow">▾</span></th>
+                <th data-key="category" data-type="str">Категория <span class="arrow">▾</span></th>
+                <th data-key="collection" data-type="str">Коллекция <span class="arrow">▾</span></th>
+                <th class="num" data-key="shipped" data-type="num">Отправлено <span class="arrow">▾</span></th>
+                <th class="num" data-key="sold" data-type="num">Продано <span class="arrow">▾</span></th>
+                <th class="num" data-key="returned" data-type="num">Возврат <span class="arrow">▾</span></th>
+                <th class="num" data-key="remainder" data-type="num">Остаток <span class="arrow">▾</span></th>
+                <th class="num" data-key="sellout" data-type="num">Sell-out <span class="arrow">▾</span></th>
+              </tr>
+            </thead>
+            <tbody id="svodBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ---------------- ROLL-UP ---------------- -->
+  <div class="tab-panel" id="panel-rollup">
+    <section class="block" style="margin-top:18px;">
+      <div class="block-head"><div class="block-title">Продажи по месяцам</div></div>
+      <div class="panel" style="padding:0;">
+        <div class="table-scroll">
+          <table class="month-table">
+            <thead>
+              <tr>
+                <th>Месяц</th>
+                <th class="num">Отправлено, шт</th>
+                <th class="num">Продано, шт</th>
+                <th class="num">Sell-out</th>
+                <th class="num">Отправлено, руб</th>
+                <th class="num">Продано, руб</th>
+              </tr>
+            </thead>
+            <tbody id="monthBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="two-col">
+        <div>
+          <div class="block-head"><div class="block-title">По категориям</div><div class="block-note">Продано, шт</div></div>
+          <div class="panel"><div class="rank-list" id="catRank"></div></div>
+        </div>
+        <div>
+          <div class="block-head"><div class="block-title">По коллекциям</div><div class="block-note">Продано, шт</div></div>
+          <div class="panel"><div class="rank-list" id="collRank"></div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ---------------- TOP10 ---------------- -->
+  <div class="tab-panel" id="panel-top10">
+    <section class="block" style="margin-top:18px;">
+      <div class="toolbar">
+        <select class="msel" id="top10MonthSel">
+          <option value="__all__">За весь период</option>
+        </select>
+      </div>
+      <div class="top-grid">
+        <div>
+          <div class="block-head"><div class="block-title">Топ по продажам, шт</div></div>
+          <div class="panel" id="topUnitsList"></div>
+        </div>
+        <div>
+          <div class="block-head"><div class="block-title">Топ по продажам, руб</div></div>
+          <div class="panel" id="topMoneyList"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</div>
+
+<footer>TS × Planta Rosa · данные обновляются напрямую из Google Sheets при каждой загрузке страницы</footer>
+
+<script>
+/* =========================================================================
+   CONFIG — вставьте сюда опубликованные CSV-ссылки листов Google Sheets
+   (Файл → Общий доступ → Опубликовать в интернете → выбрать лист →
+   формат «Значения, разделённые запятыми (.csv)»).
+   Каждая ссылка выглядит примерно так:
+   https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=123456789&single=true&output=csv
+   ========================================================================= */
+const CSV_URLS = {
+  sales:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTB3OOyZSvtO01LY5Djj0LTvNw1dgEXSi2J6VAgn5EBFT0IpDZVvlTTIm2D_YldouYQ1UkLE31gMwGO/pub?gid=697476132&single=true&output=csv',    // лист «Продажи»
+  shipped: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTB3OOyZSvtO01LY5Djj0LTvNw1dgEXSi2J6VAgn5EBFT0IpDZVvlTTIm2D_YldouYQ1UkLE31gMwGO/pub?gid=2052120865&single=true&output=csv', // лист «Отправлено»
+  returns: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTB3OOyZSvtO01LY5Djj0LTvNw1dgEXSi2J6VAgn5EBFT0IpDZVvlTTIm2D_YldouYQ1UkLE31gMwGO/pub?gid=1480082397&single=true&output=csv', // лист «Возврат»
+  catalog: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTB3OOyZSvtO01LY5Djj0LTvNw1dgEXSi2J6VAgn5EBFT0IpDZVvlTTIm2D_YldouYQ1UkLE31gMwGO/pub?gid=1802069216&single=true&output=csv'  // лист «Справочник»
+};
+/* ========================================================================= */
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sep','Oct','Nov','Dec'];
+const SIZE_ORDER = ['XS','S','M','L','XL'];
+
+/* ---------------- utils ---------------- */
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function num(v){
+  // Strict numeric parse: a handful of "Базовая" prices in Справочник are malformed
+  // text like "11500..12600" (a range, not a number) — a lenient parseFloat would
+  // silently read that as 11500. Reject anything that isn't a clean number instead,
+  // and treat it as 0 (matches the convention used in the source workbook).
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  const s = String(v).trim().replace(/\s/g,'').replace(',', '.');
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return 0;
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+}
+function fmtInt(n){ return Math.round(n).toLocaleString('ru-RU'); }
+function fmtMoney(n){ return Math.round(n).toLocaleString('ru-RU') + ' ₽'; }
+function fmtPct(n){ return (isFinite(n) ? (n*100).toFixed(1) : '0.0') + '%'; }
+
+function parseCSV(text){
+  // RFC4180-ish parser: handles quoted fields, embedded commas/newlines/escaped quotes.
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (inQuotes){
+      if (c === '"'){
+        if (text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ','){ row.push(field); field = ''; }
+      else if (c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r'){ /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length || row.length){ row.push(field); rows.push(row); }
+  if (!rows.length) return [];
+  const headers = rows[0].map(h => h.trim());
+  const out = [];
+  for (let r = 1; r < rows.length; r++){
+    const cells = rows[r];
+    if (cells.length === 1 && cells[0].trim() === '') continue;
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = (cells[idx] ?? '').trim(); });
+    out.push(obj);
+  }
+  return out;
+}
+
+async function fetchCSV(url, label){
+  if (!url || url.indexOf('REPLACE_WITH_') === 0){
+    throw new Error(`Не задана CSV-ссылка для листа «${label}». Откройте index.html и заполните CSV_URLS в начале файла.`);
+  }
+  const res = await fetch(url, {cache:'no-store'});
+  if (!res.ok) throw new Error(`Не удалось загрузить «${label}» (HTTP ${res.status}). Проверьте, что ссылка опубликована и доступна без входа в аккаунт.`);
+  const text = await res.text();
+  if (/^\s*<!doctype html/i.test(text) || /^\s*<html/i.test(text)){
+    throw new Error(`Ссылка для «${label}» вернула HTML вместо CSV — похоже, лист не опубликован в интернет либо ссылка неверна.`);
+  }
+  return parseCSV(text);
+}
+
+function normalizeCategory(cat){
+  const c = (cat || '').trim();
+  return c === 'Свитшот' ? 'Свитшоты' : c;
+}
+function normalizeSize(sz){ return (sz || '').trim().toUpperCase(); }
+
+function parseDate(raw){
+  if (!raw) return null;
+  const s = String(raw).trim();
+  let m;
+  // ISO: 2025-12-05 or 2025-12-05 00:00:00
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return new Date(+m[1], +m[2]-1, +m[3]);
+  // DD.MM.YYYY
+  if ((m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return new Date(+m[3], +m[2]-1, +m[1]);
+  // MM/DD/YYYY (Google default locale)
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return new Date(+m[3], +m[1]-1, +m[2]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function monthLabel(date){
+  if (!date) return null;
+  return MONTH_NAMES[date.getMonth()] + ' ' + date.getFullYear();
+}
+function monthSortKey(label){
+  const parts = (label || '').split(' ');
+  const idx = MONTH_NAMES.indexOf(parts[0]);
+  const year = parseInt(parts[1], 10) || 0;
+  return year * 100 + (idx < 0 ? 0 : idx);
+}
+
+/* ---------------- state ---------------- */
+let DATA = { sales:[], shipped:[], returns:[], catalog:[] };
+let CATALOG_MAP = new Map();     // артикул -> {name, photo, price}
+let ARTICLES = [];               // aggregated per-article rows
+let MONTHS = [];                 // aggregated per-month rows (chronological)
+let CATS = [];                   // aggregated per-category rows
+let COLLS = [];                  // aggregated per-collection rows
+let SIZES = {};                  // size -> {shipped, sold}
+let TOTALS = {};
+let sortState = { key:'sold', dir:'desc' };
+let searchTerm = '';
+
+/* ---------------- load & aggregate ---------------- */
+
+async function loadAll(){
+  const [sales, shipped, returns, catalog] = await Promise.all([
+    fetchCSV(CSV_URLS.sales,   'Продажи'),
+    fetchCSV(CSV_URLS.shipped, 'Отправлено'),
+    fetchCSV(CSV_URLS.returns, 'Возврат'),
+    fetchCSV(CSV_URLS.catalog, 'Справочник'),
+  ]);
+  DATA = { sales, shipped, returns, catalog };
+  buildCatalogMap();
+  aggregate();
+}
+
+function buildCatalogMap(){
+  // A handful of articles appear more than once in «Справочник» with some fields
+  // filled on one row and blank on another (e.g. price on row 1, blank on row 2,
+  // or vice versa) — merge duplicates by keeping the first NON-EMPTY value found
+  // per field, so a blank on one row doesn't blank out a good value from another.
+  CATALOG_MAP = new Map();
+  for (const row of DATA.catalog){
+    const art = (row['Артикул'] || '').trim();
+    if (!art) continue;
+    const name = (row['Название'] || '').trim();
+    const photo = (row['Фото'] || '').trim();
+    const price = num(row['Базовая']);
+    if (!CATALOG_MAP.has(art)) CATALOG_MAP.set(art, {name:'', photo:'', price:0});
+    const rec = CATALOG_MAP.get(art);
+    if (!rec.name && name) rec.name = name;
+    if (!rec.photo && photo) rec.photo = photo;
+    if (!rec.price && price) rec.price = price;
+  }
+}
+
+function aggregate(){
+  const articleMap = new Map(); // article -> agg
+  function getArt(art){
+    if (!articleMap.has(art)){
+      articleMap.set(art, {
+        article: art, category:'', collection:'',
+        shipped:0, shippedRub:0, sold:0, soldRub:0, returned:0
+      });
+    }
+    return articleMap.get(art);
+  }
+
+  SIZES = {}; SIZE_ORDER.forEach(s => SIZES[s] = {shipped:0, sold:0});
+
+  const monthMap = new Map();   // label -> {shipped,shippedRub,sold,soldRub}
+  function getMonth(label){
+    if (!monthMap.has(label)) monthMap.set(label, {label, shipped:0, shippedRub:0, sold:0, soldRub:0});
+    return monthMap.get(label);
+  }
+  const catMap = new Map();
+  function getCat(c){ if(!catMap.has(c)) catMap.set(c,{name:c, shipped:0, sold:0}); return catMap.get(c); }
+  const collMap = new Map();
+  function getColl(c){ if(!collMap.has(c)) collMap.set(c,{name:c, shipped:0, sold:0}); return collMap.get(c); }
+
+  let totalShipped=0, totalShippedRub=0, totalSold=0, totalSoldRub=0, totalReturned=0;
+
+  // ---- Отправлено ----
+  for (const row of DATA.shipped){
+    const art = (row['Артикул'] || '').trim();
+    if (!art) continue;
+    const qty = num(row['Количество']);
+    const cat = normalizeCategory(row['Категория']);
+    const coll = (row['Коллекция'] || '').trim();
+    const size = normalizeSize(row['Размер']);
+    const price = (CATALOG_MAP.get(art) || {}).price || 0;
+    const rub = qty * price;
+    const date = parseDate(row['Дата']);
+    const mLabel = monthLabel(date);
+
+    const a = getArt(art);
+    a.shipped += qty; a.shippedRub += rub;
+    if (cat) a.category = cat;
+    if (coll) a.collection = coll;
+
+    if (SIZES[size]) SIZES[size].shipped += qty;
+    if (cat) { const c = getCat(cat); c.shipped += qty; }
+    if (coll){ const c = getColl(coll); c.shipped += qty; }
+    if (mLabel){ const m = getMonth(mLabel); m.shipped += qty; m.shippedRub += rub; }
+
+    totalShipped += qty; totalShippedRub += rub;
+  }
+
+  // ---- Продажи ----
+  for (const row of DATA.sales){
+    const art = (row['Артикул'] || '').trim();
+    if (!art) continue;
+    const qty = num(row['Количество']);
+    const rub = num(row['Сумма']);
+    const cat = normalizeCategory(row['Категория']);
+    const coll = (row['Коллекция'] || '').trim();
+    const size = normalizeSize(row['Размер']);
+    const mLabel = (row['Месяц'] || '').trim() || null;
+
+    const a = getArt(art);
+    a.sold += qty; a.soldRub += rub;
+    if (cat && !a.category) a.category = cat;
+    if (coll && !a.collection) a.collection = coll;
+
+    if (SIZES[size]) SIZES[size].sold += qty;
+    if (cat){ const c = getCat(cat); c.sold += qty; }
+    if (coll){ const c = getColl(coll); c.sold += qty; }
+    if (mLabel){ const m = getMonth(mLabel); m.sold += qty; m.soldRub += rub; }
+
+    totalSold += qty; totalSoldRub += rub;
+  }
+
+  // ---- Возврат ----
+  for (const row of DATA.returns){
+    const art = (row['Артикул'] || '').trim();
+    if (!art) continue;
+    const qty = num(row['Кол-во']);
+    const a = getArt(art);
+    a.returned += qty;
+    totalReturned += qty;
+  }
+
+  ARTICLES = Array.from(articleMap.values()).map(a => ({
+    ...a,
+    remainder: a.shipped - a.sold - a.returned,
+    sellout: a.shipped > 0 ? a.sold / a.shipped : 0
+  }));
+
+  MONTHS = Array.from(monthMap.values())
+    .sort((x,y) => monthSortKey(x.label) - monthSortKey(y.label))
+    .map(m => ({...m, sellout: m.shipped > 0 ? m.sold/m.shipped : 0}));
+
+  CATS = Array.from(catMap.values()).sort((a,b) => b.sold - a.sold);
+  COLLS = Array.from(collMap.values()).sort((a,b) => b.sold - a.sold);
+
+  TOTALS = {
+    shipped: totalShipped, shippedRub: totalShippedRub,
+    sold: totalSold, soldRub: totalSoldRub,
+    returned: totalReturned,
+    remainder: totalShipped - totalSold - totalReturned,
+    sellout: totalShipped > 0 ? totalSold/totalShipped : 0
+  };
+}
+
+/* ---------------- render: KPIs ---------------- */
+
+function renderKPIs(){
+  const el = document.getElementById('kpiRow');
+  el.innerHTML = `
+    <div class="kpi">
+      <div class="label">Отправлено</div>
+      <div class="value">${fmtInt(TOTALS.shipped)} <small>шт</small></div>
+      <div class="sub">${fmtMoney(TOTALS.shippedRub)}</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Продано</div>
+      <div class="value">${fmtInt(TOTALS.sold)} <small>шт</small></div>
+      <div class="sub">${fmtMoney(TOTALS.soldRub)}</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Остаток</div>
+      <div class="value">${fmtInt(TOTALS.remainder)} <small>шт</small></div>
+      <div class="sub">из них возврат: ${fmtInt(TOTALS.returned)} шт</div>
+    </div>
+    <div class="kpi accent">
+      <div class="label">Sell-out</div>
+      <div class="value">${fmtPct(TOTALS.sellout)}</div>
+      <div class="sub">продано / отправлено</div>
+    </div>
+  `;
+}
+
+/* ---------------- render: size breakdown ---------------- */
+
+function renderSizeGrid(){
+  const el = document.getElementById('sizeGrid');
+  const maxShipped = Math.max(1, ...SIZE_ORDER.map(s => SIZES[s].shipped));
+  el.innerHTML = SIZE_ORDER.map(s => {
+    const d = SIZES[s];
+    const pct = d.shipped > 0 ? d.sold/d.shipped : 0;
+    const trackWidth = Math.max(6, (d.shipped / maxShipped) * 100);
+    const fillWidth = d.shipped > 0 ? Math.min(100, (d.sold/d.shipped)*100) : 0;
+    return `
+      <div class="size-cell">
+        <div class="sz-top"><span class="sz-name">${s}</span><span class="sz-pct">${fmtPct(pct)}</span></div>
+        <div class="track" style="width:100%;">
+          <div class="track" style="width:${trackWidth}%; background:var(--brand-100);">
+            <div class="fill" style="width:${fillWidth}%;"></div>
+          </div>
+        </div>
+        <div class="sz-nums"><span>${fmtInt(d.sold)} продано</span><span>${fmtInt(d.shipped)} отправлено</span></div>
+      </div>`;
+  }).join('');
+}
+
+/* ---------------- render: Сводная table ---------------- */
+
+function selloutClass(p){
+  if (p >= 0.6) return 'pct-good';
+  if (p >= 0.3) return 'pct-mid';
+  return 'pct-low';
+}
+
+function renderSvodnaya(){
+  let rows = ARTICLES;
+  if (searchTerm){
+    const q = searchTerm.toLowerCase();
+    rows = rows.filter(a =>
+      a.article.toLowerCase().includes(q) ||
+      (a.category||'').toLowerCase().includes(q) ||
+      (a.collection||'').toLowerCase().includes(q)
+    );
+  }
+  const { key, dir } = sortState;
+  const mult = dir === 'asc' ? 1 : -1;
+  rows = [...rows].sort((a,b) => {
+    let va, vb;
+    if (key === 'article' || key === 'category' || key === 'collection'){ va=a[key]||''; vb=b[key]||''; return mult*va.localeCompare(vb,'ru'); }
+    va = a[key]; vb = b[key];
+    return mult*(va-vb);
+  });
+
+  document.getElementById('svodCount').textContent = `${rows.length} из ${ARTICLES.length} артикулов`;
+
+  document.querySelectorAll('#svodTable thead th').forEach(th => {
+    th.classList.toggle('active', th.dataset.key === key);
+    const arrow = th.querySelector('.arrow');
+    if (arrow) arrow.textContent = th.dataset.key === key ? (dir === 'asc' ? '▲' : '▼') : '▾';
+  });
+
+  const body = document.getElementById('svodBody');
+  const MAX_ROWS = 400;
+  const shown = rows.slice(0, MAX_ROWS);
+  body.innerHTML = shown.map(a => {
+    const cat = CATALOG_MAP.get(a.article);
+    const photo = cat && cat.photo ? cat.photo : '';
+    const initials = a.article.replace(/[^A-Za-zА-Яа-я0-9]/g,'').slice(0,2).toUpperCase() || '·';
+    const imgCell = photo
+      ? `<img class="thumb" src="${escapeHtml(photo)}" loading="lazy" alt=""
+           onerror="this.outerHTML='<div class=&quot;thumb-fallback&quot;>${initials}</div>'">`
+      : `<div class="thumb-fallback">${initials}</div>`;
+    return `<tr>
+      <td>${imgCell}</td>
+      <td class="name-cell"><div class="art-code">${escapeHtml(a.article)}</div></td>
+      <td>${escapeHtml(a.category||'—')}</td>
+      <td>${escapeHtml(a.collection||'—')}</td>
+      <td class="num">${fmtInt(a.shipped)}</td>
+      <td class="num">${fmtInt(a.sold)}</td>
+      <td class="num">${fmtInt(a.returned)}</td>
+      <td class="num">${fmtInt(a.remainder)}</td>
+      <td class="num"><span class="pct-chip ${selloutClass(a.sellout)}">${fmtPct(a.sellout)}</span></td>
+    </tr>`;
+  }).join('');
+  if (rows.length > MAX_ROWS){
+    body.innerHTML += `<tr><td colspan="9" style="text-align:center;color:var(--ink-mute);padding:12px;">Показаны первые ${MAX_ROWS} строк из ${rows.length} — уточните поиск, чтобы увидеть остальные</td></tr>`;
+  }
+}
+
+/* ---------------- render: Roll-up ---------------- */
+
+function renderRollup(){
+  const mbody = document.getElementById('monthBody');
+  mbody.innerHTML = MONTHS.map(m => `
+    <tr>
+      <td>${escapeHtml(m.label)}</td>
+      <td class="num">${fmtInt(m.shipped)}</td>
+      <td class="num">${fmtInt(m.sold)}</td>
+      <td class="num">${fmtPct(m.sellout)}</td>
+      <td class="num">${fmtMoney(m.shippedRub)}</td>
+      <td class="num">${fmtMoney(m.soldRub)}</td>
+    </tr>`).join('');
+
+  renderRankList('catRank', CATS);
+  renderRankList('collRank', COLLS);
+}
+
+function renderRankList(elId, list){
+  const el = document.getElementById(elId);
+  const max = Math.max(1, ...list.map(x => x.sold));
+  el.innerHTML = list.map((x,i) => {
+    const w = Math.max(3, (x.sold/max)*100);
+    const labelInside = w > 32;
+    return `
+      <div class="rank-row">
+        <div class="rank-idx">${i+1}</div>
+        <div class="rank-bar-wrap">
+          <div class="rank-bar-fill" style="width:${w}%;"></div>
+          <div class="rank-label ${labelInside ? '' : 'outside'}" style="${labelInside ? '' : `left:calc(${w}% + 8px);`}">${escapeHtml(x.name || '—')}</div>
+        </div>
+        <div class="rank-val">${fmtInt(x.sold)} шт</div>
+      </div>`;
+  }).join('');
+}
+
+/* ---------------- render: Top10 ---------------- */
+
+function populateMonthSelect(){
+  const sel = document.getElementById('top10MonthSel');
+  const opts = ['<option value="__all__">За весь период</option>']
+    .concat(MONTHS.map(m => `<option value="${escapeHtml(m.label)}">${escapeHtml(m.label)}</option>`));
+  sel.innerHTML = opts.join('');
+}
+
+function renderTop10(){
+  const monthFilter = document.getElementById('top10MonthSel').value;
+  const byArt = new Map();
+  for (const row of DATA.sales){
+    const art = (row['Артикул']||'').trim();
+    if (!art) continue;
+    const mLabel = (row['Месяц']||'').trim();
+    if (monthFilter !== '__all__' && mLabel !== monthFilter) continue;
+    if (!byArt.has(art)) byArt.set(art, {article:art, qty:0, rub:0});
+    const rec = byArt.get(art);
+    rec.qty += num(row['Количество']);
+    rec.rub += num(row['Сумма']);
+  }
+  const list = Array.from(byArt.values());
+  const topUnits = [...list].sort((a,b)=>b.qty-a.qty).slice(0, monthFilter==='__all__'?20:10);
+  const topMoney = [...list].sort((a,b)=>b.rub-a.rub).slice(0, monthFilter==='__all__'?20:10);
+
+  function renderList(elId, arr, valueFn, valueFmt){
+    const el = document.getElementById(elId);
+    el.innerHTML = arr.map((x,i) => {
+      const cat = CATALOG_MAP.get(x.article);
+      const photo = cat && cat.photo ? cat.photo : '';
+      const initials = x.article.replace(/[^A-Za-zА-Яа-я0-9]/g,'').slice(0,2).toUpperCase() || '·';
+      const artMeta = ARTICLES.find(a => a.article === x.article) || {};
+      const imgCell = photo
+        ? `<img class="thumb" src="${escapeHtml(photo)}" loading="lazy" alt=""
+             onerror="this.outerHTML='<div class=&quot;thumb-fallback&quot;>${initials}</div>'">`
+        : `<div class="thumb-fallback">${initials}</div>`;
+      return `<div class="top-item">
+        <div class="top-rank">${i+1}</div>
+        ${imgCell}
+        <div style="flex:1;min-width:0;">
+          <div class="art-code" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(x.article)}</div>
+          <div class="art-sub">${escapeHtml(artMeta.category||'')}${artMeta.collection ? ' · '+escapeHtml(artMeta.collection) : ''}</div>
+        </div>
+        <div class="rank-val" style="font-weight:700;color:var(--brand-700);">${valueFmt(valueFn(x))}</div>
+      </div>`;
+    }).join('') || `<div style="padding:16px;color:var(--ink-mute);font-size:13px;">Нет данных за выбранный период</div>`;
+  }
+  renderList('topUnitsList', topUnits, x=>x.qty, fmtInt);
+  renderList('topMoneyList', topMoney, x=>x.rub, fmtMoney);
+}
+
+/* ---------------- wiring ---------------- */
+
+function wireTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+function wireSearch(){
+  const input = document.getElementById('searchInput');
+  let t;
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(() => { searchTerm = input.value.trim(); renderSvodnaya(); }, 120);
+  });
+}
+function wireSort(){
+  document.querySelectorAll('#svodTable thead th').forEach(th => {
+    if (th.dataset.type === 'none') return;
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (sortState.key === key) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+      else sortState = { key, dir: th.dataset.type === 'num' ? 'desc' : 'asc' };
+      renderSvodnaya();
+    });
+  });
+}
+function wireTop10(){
+  document.getElementById('top10MonthSel').addEventListener('change', renderTop10);
+}
+
+function setStatus(state, text){
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot ' + (state === 'ok' ? '' : state);
+  document.getElementById('statusText').textContent = text;
+}
+function showBanner(message){
+  document.getElementById('bannerHost').innerHTML =
+    `<div class="banner error"><strong>Не удалось загрузить данные.</strong>&nbsp;${escapeHtml(message)}</div>`;
+  document.body.classList.add('has-banner');
+}
+
+async function init(){
+  wireTabs(); wireSearch(); wireSort(); wireTop10();
+  try{
+    setStatus('loading', 'Загрузка данных…');
+    await loadAll();
+    renderKPIs();
+    renderSizeGrid();
+    renderSvodnaya();
+    renderRollup();
+    populateMonthSelect();
+    renderTop10();
+    const now = new Date();
+    setStatus('ok', 'Обновлено ' + now.toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));
+  }catch(err){
+    console.error(err);
+    setStatus('err', 'Ошибка загрузки');
+    showBanner(err.message || String(err));
+  }
+}
+init();
+</script>
+</body>
+</html>
